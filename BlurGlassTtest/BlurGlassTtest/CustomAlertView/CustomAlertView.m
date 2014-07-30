@@ -10,15 +10,14 @@
 #import "CXAlertButtonItem.h"
 #import "CXAlertBackgroundWindow.h"
 
-static CXAlertBackgroundWindow *__cx_alert_background_window;
+#define kWeakSelf __weak typeof (self) weakSelf = self;
 
-static CGFloat const kDefaultScrollViewPadding = 10.;
-static CGFloat const kDefaultButtonHeight = 44.;
-static CGFloat const kDefaultContainerWidth = 280.;
-static CGFloat const kDefaultVericalPadding = 10.;
-static CGFloat const kDefaultContentScrollViewMaxHeight = 180.;
-static CGFloat const kDefaultContentScrollViewMinHeight = 0.;
-static CGFloat const kDefaultBottomScrollViewHeight = 44.;
+#define kDefaultScrollViewPadding 10.
+#define kDefaultButtonHeight  44.
+#define kDefaultContainerWidth  280.;
+#define kDefaultContentScrollViewMaxHeight  180.
+#define kDefaultContentScrollViewMinHeight  0.
+#define kDefaultBottomScrollViewHeight  44.
 
 @interface CustomAlertView ()
 
@@ -33,7 +32,8 @@ static CGFloat const kDefaultBottomScrollViewHeight = 44.;
 @property (nonatomic, strong) UIScrollView *bottomScrollView;
 @property (nonatomic, strong) UIView *containerView;
 
-@property (nonatomic, strong) UIWindow *alertWindow;
+@property (nonatomic, strong) CXAlertBackgroundWindow *alertWindow;
+@property (nonatomic, strong) UIWindow *oldKeyWindow;
 
 @property (nonatomic, assign) CGFloat cornerRadius;
 @property (nonatomic, assign) CGFloat shadowRadius;
@@ -54,7 +54,20 @@ static CGFloat const kDefaultBottomScrollViewHeight = 44.;
 
 - (void)dealloc
 {
-    self.alertWindow = nil;
+    for (UIView *view in self.subviews) {
+        [view removeFromSuperview];
+    }
+    
+    self.titleLabel = nil;
+    self.contentView = nil;
+    self.contentScrollView = nil;
+    self.bottomScrollView = nil;
+    self.containerView = nil;
+    
+    [_buttons removeAllObjects];
+    self.buttons = nil;
+    
+    [self removeFromSuperview];
 }
 
 - (id)initWithFrame:(CGRect)frame
@@ -90,6 +103,8 @@ static CGFloat const kDefaultBottomScrollViewHeight = 44.;
     self = [super init];
     if (self) {
         self.frame = [UIScreen mainScreen].bounds;
+        self.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+        self.opaque = NO;
         
         _contentView = contentView;
         _title = title;
@@ -112,6 +127,8 @@ static CGFloat const kDefaultBottomScrollViewHeight = 44.;
         self.cornerRadius = 8;
         self.shadowRadius = 8;
         
+        
+        self.oldKeyWindow = [[UIApplication sharedApplication] keyWindow];
         [self setup];
         
         if (cancelButtonTitle) {
@@ -242,7 +259,7 @@ static CGFloat const kDefaultBottomScrollViewHeight = 44.;
             [_containerView addSubview:_seperatorLine];
         }
         
-        _bottomScrollView.backgroundColor = [UIColor redColor];
+        _bottomScrollView.backgroundColor = [UIColor clearColor];
         _bottomScrollView.frame = CGRectMake( 0, y+1, self.containerWidth, [self heightForBottomScrollView]);
     }
     
@@ -417,40 +434,35 @@ static CGFloat const kDefaultBottomScrollViewHeight = 44.;
 }
 
 #pragma mark - show/hide
-+ (void)showBackground
+- (void)showBackground
 {
-    if (!__cx_alert_background_window) {
-        __cx_alert_background_window = [[CXAlertBackgroundWindow alloc] initWithFrame:[UIScreen mainScreen].bounds];
-        __cx_alert_background_window.hidden = NO;
-        
-//        [__cx_alert_background_window makeKeyAndVisible];
-        
-        UIWindow *keyWindow = [UIApplication sharedApplication].keyWindow;
-        [keyWindow addSubview:__cx_alert_background_window];
-        [keyWindow bringSubviewToFront:__cx_alert_background_window];
-        
-        __cx_alert_background_window.alpha = 0;
-        [UIView animateWithDuration:0.3
-                         animations:^{
-                             __cx_alert_background_window.alpha = 1;
-                         }];
+    if (!self.alertWindow) {
+        self.alertWindow = [[CXAlertBackgroundWindow alloc] initWithFrame:[UIScreen mainScreen].bounds];
+        [self.alertWindow makeKeyAndVisible];
+        self.alertWindow.alpha = 0;
+        [self.alertWindow addSubview:self];
     }
+    [UIView animateWithDuration:0.3
+                     animations:^{
+                         self.alertWindow.alpha = 1;
+                     }];
 }
 
-+ (void)hideBackgroundAnimated:(BOOL)animated
+- (void)hideBackgroundAnimated:(BOOL)animated
 {
     if (!animated) {
-        [__cx_alert_background_window removeFromSuperview];
-        __cx_alert_background_window = nil;
+        [self.oldKeyWindow makeKeyAndVisible];
+        [self.alertWindow removeFromSuperview];
+        self.alertWindow = nil;
         return;
     }
     [UIView animateWithDuration:0.3
                      animations:^{
-                         __cx_alert_background_window.alpha = 0;
-                     }
-                     completion:^(BOOL finished) {
-                         [__cx_alert_background_window removeFromSuperview];
-                         __cx_alert_background_window = nil;
+                         self.alertWindow.alpha = 0;
+                     } completion:^(BOOL finished) {
+                         [self.oldKeyWindow makeKeyAndVisible];
+                         [self.alertWindow removeFromSuperview];
+                         self.alertWindow = nil;
                      }];
 }
 
@@ -463,18 +475,14 @@ static CGFloat const kDefaultBottomScrollViewHeight = 44.;
     
     _visible = YES;
     
-//    if (!self.alertWindow) {
-//        self.alertWindow = [[UIApplication sharedApplication] keyWindow];
-//    }
-    
     // transition background
-    [CustomAlertView showBackground];
+    [self showBackground];
+//    [self validateLayout];
     
-    [__cx_alert_background_window addSubview:self];
-    
+    kWeakSelf
     [self transitionInCompletion:^{
-        if (self.didShowHandler) {
-            self.didShowHandler(self);
+        if (weakSelf.didShowHandler) {
+            weakSelf.didShowHandler(weakSelf);
         }
         
     }];
@@ -495,30 +503,25 @@ static CGFloat const kDefaultBottomScrollViewHeight = 44.;
         }
     }
     
+    kWeakSelf
     void (^dismissComplete)(void) = ^{
         _visible = NO;
-        [self tearDown];
+        [weakSelf tearDown];
         
         if (isVisible) {
-            if (self.didDismissHandler) {
-                self.didDismissHandler(self);
+            if (weakSelf.didDismissHandler) {
+                weakSelf.didDismissHandler(weakSelf);
             }
-        }
-        
-        // check if we should show next alert
-        if (!isVisible) {
-            return;
         }
         
     };
     
     if (isVisible) {
         [self transitionOutCompletion:dismissComplete];
-        [CustomAlertView hideBackgroundAnimated:YES];
-        
+        [self hideBackgroundAnimated:YES];
     } else {
         dismissComplete();
-        [CustomAlertView hideBackgroundAnimated:YES];
+        [self hideBackgroundAnimated:YES];
     }
     
 }
@@ -528,11 +531,11 @@ static CGFloat const kDefaultBottomScrollViewHeight = 44.;
 {
     _containerView.alpha = 0;
     _containerView.transform = CGAffineTransformMakeScale(1.2, 1.2);
-    
+    kWeakSelf
     [UIView animateWithDuration:0.3
                      animations:^{
-                         _containerView.alpha = 1.;
-                         _containerView.transform = CGAffineTransformMakeScale(1.0,1.0);
+                         weakSelf.containerView.alpha = 1.;
+                         weakSelf.containerView.transform = CGAffineTransformMakeScale(1.0,1.0);
                          
                      }
                      completion:^(BOOL finished) {
@@ -544,10 +547,11 @@ static CGFloat const kDefaultBottomScrollViewHeight = 44.;
 
 - (void)transitionOutCompletion:(void(^)(void))completion
 {
+    kWeakSelf
     [UIView animateWithDuration:0.25
                      animations:^{
-                         _containerView.alpha = 0;
-                         _containerView.transform = CGAffineTransformMakeScale(0.9,0.9);
+                         weakSelf.containerView.alpha = 0;
+                         weakSelf.containerView.transform = CGAffineTransformMakeScale(0.9,0.9);
                          
                      }
                      completion:^(BOOL finished) {
@@ -561,24 +565,22 @@ static CGFloat const kDefaultBottomScrollViewHeight = 44.;
 - (void)tearDown
 {
     [self.titleLabel removeFromSuperview];
-    self.titleLabel = nil;
+
     
     [self.contentView removeFromSuperview];
-    self.contentView = nil;
+
     
     [self.contentScrollView removeFromSuperview];
-    self.contentScrollView = nil;
+
     
     [self.bottomScrollView removeFromSuperview];
-    self.bottomScrollView = nil;
+
     
     [self.containerView removeFromSuperview];
-    self.containerView = nil;
+
     
     [self removeFromSuperview];
     
-//    [self.alertWindow removeFromSuperview];
-//    self.alertWindow = nil;
 }
 
 #pragma mark - setter
