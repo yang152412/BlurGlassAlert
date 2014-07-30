@@ -91,12 +91,14 @@
 
 - (IBAction)showCustomAlert:(id)sender
 {
-    UIView *view = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 180, 180)];
+    UIView *view = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 180, 10)];
     view.backgroundColor = [UIColor whiteColor];
     
     
-    CustomAlertView *alertView = [[CustomAlertView alloc] initWithTitle:@"title" contentView:view cancelButtonTitle:@"cancel"];
-    
+//    CustomAlertView *alertView = [[CustomAlertView alloc] initWithTitle:@"title" contentView:view cancelButtonTitle:@"cancel"];
+
+    CustomAlertView *alertView = [[CustomAlertView alloc] initWithTitle:@"title" message:@"\"Steven Paul Jobs, the co-founder, two-time CEO, and chairman of Apple Inc., died October 5, 2011, after a long battle with cancer. He was 56. He was is survived by his wife and four children.The achievements in Jobs' career included helping to popularize the personal computer, leading the development of groundbreaking technology products including the Macintosh, iPod, and iPhone, and driving Pixar Animation Studios to prominence. Jobs’ charisma, drive for success and control, and vision contributed to revolutionary changes in the way technology integrates into and affects the daily life of most people in the world.\" - Wikipedia" cancelButtonTitle:@"cancel"];
+    alertView.cancelButtonColor = [UIColor redColor];
     [alertView addButtonWithTitle:@"sure" type:CXAlertViewButtonTypeDefault handler:^(CustomAlertView *alertView, CXAlertButtonItem *button) {
         NSLog(@" \n sure \n ");
     }];

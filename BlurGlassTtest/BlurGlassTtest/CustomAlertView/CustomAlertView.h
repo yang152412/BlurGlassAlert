@@ -23,9 +23,6 @@ typedef void(^CXAlertViewHandler)(CustomAlertView *alertView);
 
 @property (nonatomic, readonly, getter = isVisible) BOOL visible;
 
-@property (nonatomic, assign) CGFloat vericalPadding;
-@property (nonatomic, assign) CGFloat containerWidth;
-
 @property (nonatomic, strong) UIColor *titleColor NS_AVAILABLE_IOS(5_0) UI_APPEARANCE_SELECTOR;
 
 

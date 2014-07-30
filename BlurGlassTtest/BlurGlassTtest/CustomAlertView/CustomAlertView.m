@@ -13,13 +13,17 @@
 #define kWeakSelf __weak typeof (self) weakSelf = self;
 
 #define kDefaultScrollViewPadding 10.
+#define kDefaultVericalPadding 10.
 #define kDefaultButtonHeight  44.
-#define kDefaultContainerWidth  280.;
+#define kDefaultContainerWidth  280.
 #define kDefaultContentScrollViewMaxHeight  180.
 #define kDefaultContentScrollViewMinHeight  0.
 #define kDefaultBottomScrollViewHeight  44.
 
 @interface CustomAlertView ()
+
+@property (nonatomic, assign) CGFloat vericalPadding;
+@property (nonatomic, assign) CGFloat containerWidth;
 
 @property (nonatomic, assign) CGFloat buttonHeight;
 @property (nonatomic, assign) CGFloat scrollViewPadding;
@@ -88,7 +92,8 @@
     messageLabel.textColor = [UIColor blackColor];
     messageLabel.numberOfLines = 0;
     messageLabel.text = message;
-    messageLabel.frame = CGRectMake( self.vericalPadding, 0, self.containerWidth - self.vericalPadding*2, [self heightWithText:message font:messageLabel.font]);
+    CGFloat height = [CustomAlertView heightWithText:message font:messageLabel.font width:kDefaultContainerWidth - 2*kDefaultVericalPadding - 1];
+    messageLabel.frame = CGRectMake( kDefaultVericalPadding, 0, kDefaultContainerWidth - kDefaultVericalPadding*2, height);
     
 #if __IPHONE_OS_VERSION_MIN_REQUIRED >= __IPHONE_6_0
     messageLabel.lineBreakMode = NSLineBreakByTruncatingTail;
@@ -112,6 +117,7 @@
         _buttonHeight = kDefaultButtonHeight;
         _containerWidth = kDefaultContainerWidth;
         _scrollViewPadding = kDefaultScrollViewPadding;
+        _vericalPadding = kDefaultVericalPadding;
         _contentScrollView = [[UIScrollView alloc] init];
         
         
@@ -281,9 +287,14 @@
 
 - (CGFloat)heightWithText:(NSString *)text font:(UIFont *)font
 {
+    return [CustomAlertView heightWithText:text font:font width:self.containerWidth - 2*self.vericalPadding - 1];
+}
+
++ (CGFloat)heightWithText:(NSString *)text font:(UIFont *)font width:(CGFloat)width
+{
     if (text) {
         CGSize size = CGSizeZero;
-        CGSize rSize = CGSizeMake(self.containerWidth - 2*self.vericalPadding - 1, NSUIntegerMax);
+        CGSize rSize = CGSizeMake(width, NSUIntegerMax);
 #if __IPHONE_OS_VERSION_MIN_REQUIRED >= __IPHONE_7_0
         NSDictionary* attributes = [NSDictionary dictionaryWithObjectsAndKeys: font, NSFontAttributeName, nil];
         CGRect rect = [text boundingRectWithSize:rSize options:NSStringDrawingUsesLineFragmentOrigin attributes:attributes context:nil];
@@ -613,5 +624,38 @@
     self.containerView.layer.shadowRadius = shadowRadius;
 }
 
+- (void)setButtonColor:(UIColor *)buttonColor
+{
+    if (_buttonColor == buttonColor) {
+        return;
+    }
+    _buttonColor = buttonColor;
+    [self setColor:buttonColor toButtonsOfType:CXAlertViewButtonTypeDefault];
+}
+
+- (void)setCancelButtonColor:(UIColor *)buttonColor
+{
+    if (_cancelButtonColor == buttonColor) {
+        return;
+    }
+    _cancelButtonColor = buttonColor;
+    [self setColor:buttonColor toButtonsOfType:CXAlertViewButtonTypeCancel];
+}
+- (void)setCustomButtonColor:(UIColor *)buttonColor
+{
+    if (_customButtonColor == buttonColor) {
+        return;
+    }
+    _customButtonColor = buttonColor;
+    [self setColor:buttonColor toButtonsOfType:CXAlertViewButtonTypeCustom];
+}
+-(void)setColor:(UIColor *)color toButtonsOfType:(CXAlertViewButtonType)type {
+    for (CXAlertButtonItem *button in _buttons) {
+        if (button.type == type) {
+            [button setTitleColor:color forState:UIControlStateNormal];
+            [button setTitleColor:[color colorWithAlphaComponent:0.8] forState:UIControlStateHighlighted];
+        }
+    }
+}
 
 @end
